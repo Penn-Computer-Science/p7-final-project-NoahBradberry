@@ -1,4 +1,4 @@
-#TODO Health, damage, game over, shooting rate limit, reload, score, sound?, death animation, health bar and score UI, enemy typrs (faster, tanks, shoot back), waves, gun upgrades (increase limit, spread shot, bigger bullets)
+#TODO sound?, death animation, enemy typrs (faster, tanks, shoot back), waves, gun upgrades (increase limit, spread shot, bigger bullets)
 
 import tkinter as tk
 import random
@@ -7,8 +7,9 @@ import math
 PLAYER_LENGTH = 25
 PLAYER_VELO = 5
 ENEMY_LENGTH = 25
-ENEMY_VELO = 4
+ENEMY_VELO = 5
 BULLET_VELO = 10
+MAX_HEALTH = 1000
 
 root = tk.Tk()
 root.title("Top-Down Shooter")
@@ -19,6 +20,7 @@ SCREEN_HEIGHT = root.winfo_screenheight()
 
 canvas = tk.Canvas(root, bg = "black")
 canvas.pack(fill=tk.BOTH, expand=True)
+
 
 class Bullet:
      def __init__(self, canvas, x1, y1, x2, y2, dx, dy):
@@ -32,37 +34,48 @@ class Bullet:
         self.canvas.move(self.id, self.dx, self.dy)
 
 def reset(event = None):
-    global player, enemies, bullets, health, alive
-    alive = True
+    global player, enemies, bullets, health, alive, health_bar, health_bar_width, score, score_text, enemy_refresh_rate
     enemies = []
     bullets = []
-    health = 100
+    alive = True
+    health = MAX_HEALTH
     canvas.delete("all")
     player = canvas.create_rectangle(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, SCREEN_WIDTH // 2 + PLAYER_LENGTH, SCREEN_HEIGHT // 2 + PLAYER_LENGTH, fill = "cyan")
-    if alive == False:
-        game_loop()
-        make_enemy()
+    canvas.create_rectangle(50, SCREEN_HEIGHT - 50, SCREEN_WIDTH - 50, SCREEN_HEIGHT - 20, fill = "gray")
+    health_bar = canvas.create_rectangle(50, SCREEN_HEIGHT - 50, SCREEN_WIDTH - 50, SCREEN_HEIGHT - 20, fill = "green")
+    health_bar_width = canvas.coords(health_bar)[2] - canvas.coords(health_bar)[0]
+    score = 0
+    score_text = canvas.create_text(SCREEN_WIDTH - 100, 40, text = f"Score: {score}", fill = "white", font = ("Arial", 30))
+    enemy_refresh_rate = 2000
+
+def revive(event = None):
+    reset()
+    game_loop()
+    make_enemy()
+
 
 def make_enemy():
-    global enemy
+    global enemy, enemy_refresh_rate
     spawn_side = random.randint(1, 4)
     start_x = random.randint(0, SCREEN_WIDTH)
     start_y = random.randint(0, SCREEN_HEIGHT)
 
     if spawn_side == 1:
-        enemy = canvas.create_rectangle(- ENEMY_LENGTH, start_y , 0, start_y + ENEMY_LENGTH, fill = "green" )
+        enemy = canvas.create_rectangle(- ENEMY_LENGTH, start_y , 0, start_y + ENEMY_LENGTH, fill = "purple" )
         enemies.append(enemy)
     elif spawn_side == 2:
-        enemy = canvas.create_rectangle(start_x, SCREEN_HEIGHT , start_x + ENEMY_LENGTH, SCREEN_HEIGHT + ENEMY_LENGTH, fill = "green" )
+        enemy = canvas.create_rectangle(start_x, SCREEN_HEIGHT , start_x + ENEMY_LENGTH, SCREEN_HEIGHT + ENEMY_LENGTH, fill = "purple" )
         enemies.append(enemy)
     elif spawn_side == 3:
-        enemy = canvas.create_rectangle(SCREEN_WIDTH, start_y, SCREEN_WIDTH + ENEMY_LENGTH, start_y + ENEMY_LENGTH, fill = "green")
+        enemy = canvas.create_rectangle(SCREEN_WIDTH, start_y, SCREEN_WIDTH + ENEMY_LENGTH, start_y + ENEMY_LENGTH, fill = "purple")
         enemies.append(enemy)
     elif spawn_side == 4:
-         enemy = canvas.create_rectangle(start_x, 0 , start_x + ENEMY_LENGTH, 0 - ENEMY_LENGTH, fill = "green")
+         enemy = canvas.create_rectangle(start_x, 0 , start_x + ENEMY_LENGTH, 0 - ENEMY_LENGTH, fill = "purple")
          enemies.append(enemy)
     
-    root.after(2000, make_enemy)
+    enemy_refresh_rate -= 10
+    
+    root.after(max(enemy_refresh_rate, 100), make_enemy)
 
 def move_enemies():
     px1, py1, px2, py2 = canvas.coords(player)
@@ -110,6 +123,7 @@ def check_delete(bullet):
         bullets.remove(bullet)
 
 def check_hit(bullet):
+    global score
     bx1, by1, bx2, by2 = canvas.bbox(bullet.id)
 
     for enemy in enemies[:]:
@@ -119,15 +133,19 @@ def check_hit(bullet):
             canvas.delete(bullet.id, enemy)
             bullets.remove(bullet)
             enemies.remove(enemy)
-
+            score += 1
+            canvas.itemconfig(score_text, text = f"Score: {score}")
 def check_collision_player(enemy):
-    global health
+    global health_bar, health
     try:
         px1, py1, px2, py2 = canvas.coords(player)
         ex1, ey1, ex2, ey2 = canvas.coords(enemy)
 
         if px1 < ex2 and px2 > ex1 and py1 < ey2 and py2 > ey1:
-            health -= 10
+            health -= 1
+            x1, y1, x2, y2 = canvas.coords(health_bar)
+            new_x2 = x1 + (health / MAX_HEALTH) * health_bar_width
+            canvas.coords(health_bar, x1, y1, new_x2, y2)
     except:
         return
 
@@ -162,6 +180,7 @@ root.bind("<Escape>", lambda e: root.destroy())
 def game_loop():    
     dx = 0
     dy = 0
+
     if alive:
 
         if keys["Left"]:
@@ -211,6 +230,11 @@ def game_loop():
                 break
 
         root.after(16, game_loop)
+
+        if alive == True:
+            root.bind("r", reset)
+        else:
+            root.bind("r", revive)
 
 reset()
 game_loop()
