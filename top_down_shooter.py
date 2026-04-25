@@ -7,7 +7,7 @@ import math
 PLAYER_LENGTH = 25
 PLAYER_VELO = 5
 ENEMY_LENGTH = 25
-ENEMY_VELO = 5
+ENEMY_VELO = 3
 BULLET_VELO = 10
 MAX_HEALTH = 1000
 
@@ -18,7 +18,7 @@ root.attributes("-fullscreen", True)
 SCREEN_WIDTH = root.winfo_screenwidth()
 SCREEN_HEIGHT = root.winfo_screenheight()
 
-canvas = tk.Canvas(root, bg = "black")
+canvas = tk.Canvas(root, bg = "#000001")
 canvas.pack(fill=tk.BOTH, expand=True)
 
 
@@ -83,6 +83,10 @@ def move_enemies():
     player_center_y = (py2 + py1) / 2
 
     for enemy in enemies[:]:
+        coords = canvas.coords(enemy)
+        if not coords:
+            enemies.remove(enemy)
+            continue
         ex1, ey1, ex2, ey2 = canvas.coords(enemy)
         enemy_center_x = (ex2 + ex1) / 2
         enemy_center_y = (ey2 + ey1) / 2
@@ -124,17 +128,33 @@ def check_delete(bullet):
 
 def check_hit(bullet):
     global score
-    bx1, by1, bx2, by2 = canvas.bbox(bullet.id)
+    bbox = canvas.bbox(bullet.id)
+    if bbox is None:
+        return
+
+    bx1, by1, bx2, by2 = bbox
 
     for enemy in enemies[:]:
-        ex1, ey1, ex2, ey2 = canvas.bbox(enemy)
+        enemy_bbox = canvas.bbox(enemy)
+        if enemy_bbox is None:
+            enemies.remove(enemy)
+            continue
+
+        ex1, ey1, ex2, ey2 = enemy_bbox
 
         if bx1 < ex2 and bx2 > ex1 and by1 < ey2 and by2 > ey1:
-            canvas.delete(bullet.id, enemy)
-            bullets.remove(bullet)
+            canvas.delete(bullet.id)
+            canvas.delete(enemy)
+
+            if bullet in bullets:
+                bullets.remove(bullet)
+
             enemies.remove(enemy)
+
             score += 1
             canvas.itemconfig(score_text, text = f"Score: {score}")
+            return
+        
 def check_collision_player(enemy):
     global health_bar, health
     try:
@@ -218,16 +238,16 @@ def game_loop():
         for bullet in bullets[:]:
             bullet.move()
             check_delete(bullet)
-        
-        for bullet in bullets[:]:
-            check_hit(bullet)
+            if bullet in bullets:
+                check_hit(bullet)
+            
+        for enemy in enemies[:]:
+            check_collision_player(enemy)
 
         
-        for enemy in enemies:
-            check_collision_player(enemy)
-            if health <= 0:
-                game_over()
-                break
+        if health <= 0:
+            game_over()
+            
 
         root.after(16, game_loop)
 
