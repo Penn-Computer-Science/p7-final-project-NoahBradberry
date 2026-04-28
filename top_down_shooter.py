@@ -84,7 +84,7 @@ def make_enemy():
     
     enemy_refresh_rate -= 10
     
-    root.after(max(enemy_refresh_rate, 100), make_enemy)
+    root.after(100, make_enemy)
 
 def move_enemies():
     px1, py1, px2, py2 = canvas.coords(player)
