@@ -1,4 +1,4 @@
-#TODO sound?, death animation, enemy typrs (faster, tanks, shoot back), waves, gun upgrades (increase limit, spread shot, bigger bullets)
+#TODO death animation, enemy types (faster, tanks, shoot back), waves, gun upgrades ( spread shot, bigger bullets)
 
 import tkinter as tk
 import random
@@ -15,8 +15,8 @@ root = tk.Tk()
 root.title("Top-Down Shooter")
 root.attributes("-fullscreen", True)
 
-SCREEN_WIDTH = root.winfo_screenwidth()
-SCREEN_HEIGHT = root.winfo_screenheight()
+SCREEN_WIDTH = root.winfo_screenwidth() #1920
+SCREEN_HEIGHT = root.winfo_screenheight() #1080
 
 canvas = tk.Canvas(root, bg = "black")
 canvas.pack(fill=tk.BOTH, expand=True)
@@ -32,6 +32,15 @@ class Bullet:
 
      def move(self):
         self.canvas.move(self.id, self.dx, self.dy)
+
+class Bulky_Enemy:
+    def __init__(self, canvas, x1, y1, x2, y2, dx, dy):
+        self.canvas = canvas
+        self.dx = dx
+        self.dy = dy
+
+        self.id = canvas.create_oval(x1, y1, x2, y2, fill = "red")
+
 
 def reset(event = None):
     global player, enemies, bullets, health, alive, health_bar, health_bar_width, score, score_text, enemy_refresh_rate
@@ -70,8 +79,8 @@ def make_enemy():
         enemy = canvas.create_rectangle(SCREEN_WIDTH, start_y, SCREEN_WIDTH + ENEMY_LENGTH, start_y + ENEMY_LENGTH, fill = "purple")
         enemies.append(enemy)
     elif spawn_side == 4:
-         enemy = canvas.create_rectangle(start_x, 0 , start_x + ENEMY_LENGTH, 0 - ENEMY_LENGTH, fill = "purple")
-         enemies.append(enemy)
+        enemy = canvas.create_rectangle(start_x, 0 , start_x + ENEMY_LENGTH, 0 - ENEMY_LENGTH, fill = "purple")
+        enemies.append(enemy)
     
     enemy_refresh_rate -= 10
     
@@ -135,19 +144,35 @@ def check_hit(bullet):
             enemies.remove(enemy)
             score += 1
             canvas.itemconfig(score_text, text = f"Score: {score}")
+
 def check_collision_player(enemy):
     global health_bar, health
-    try:
-        px1, py1, px2, py2 = canvas.coords(player)
-        ex1, ey1, ex2, ey2 = canvas.coords(enemy)
+    px1, py1, px2, py2 = canvas.coords(player)
+    ex1, ey1, ex2, ey2 = canvas.coords(enemy)
 
-        if px1 < ex2 and px2 > ex1 and py1 < ey2 and py2 > ey1:
-            health -= 1
-            x1, y1, x2, y2 = canvas.coords(health_bar)
-            new_x2 = x1 + (health / MAX_HEALTH) * health_bar_width
-            canvas.coords(health_bar, x1, y1, new_x2, y2)
-    except:
-        return
+    if px1 < ex2 and px2 > ex1 and py1 < ey2 and py2 > ey1:
+        health -= 1
+        x1, y1, x2, y2 = canvas.coords(health_bar)
+        new_x2 = x1 + (health / MAX_HEALTH) * health_bar_width
+        canvas.coords(health_bar, x1, y1, new_x2, y2)
+        new_ex1, new_ey1 = ex1, ey1
+        px_center = (px1 + px2) / 2
+        py_center = (py1 + py2) / 2
+        ex_center = (ex1 + ex2) / 2
+        ey_center = (ey1 + ey2) / 2
+
+        dx = ex_center - px_center
+        dy = ey_center - py_center
+
+        if abs(dx) > abs(dy):
+            new_ex1 += ENEMY_VELO if dx > 0 else -ENEMY_VELO
+        else:
+            new_ey1 += ENEMY_VELO if dy > 0 else -ENEMY_VELO
+
+        canvas.coords(enemy, new_ex1, new_ey1, new_ex1 + ENEMY_LENGTH, new_ey1 + ENEMY_LENGTH)
+
+
+
 
 def game_over():
     global alive
