@@ -1,4 +1,4 @@
-#TODO death animation, enemy types (faster, tanks, shoot back), waves, gun upgrades ( spread shot, bigger bullets)
+#TODO death animation, enemy types (shoot back), waves, gun upgrades ( spread shot, bigger bullets)
 
 import tkinter as tk
 import random
@@ -7,8 +7,7 @@ import math
 PLAYER_LENGTH = 25
 PLAYER_VELO = 5
 ENEMY_LENGTH = 25
-ENEMY_VELO = 3
-BULLET_VELO = 10
+BULLET_SPEED = 10
 MAX_HEALTH = 1000
 
 root = tk.Tk()
@@ -70,21 +69,89 @@ def make_enemy():
     start_y = random.randint(0, SCREEN_HEIGHT)
 
     if spawn_side == 1:
-        enemy = canvas.create_rectangle(- ENEMY_LENGTH, start_y , 0, start_y + ENEMY_LENGTH, fill = "purple" )
-        enemies.append(enemy)
+        enemy_type = random.choice(["normal", "tank", "speedy"])
+        if enemy_type == "normal":
+            color = "purple"
+            health = 1
+            speed = 3
+            enemy = canvas.create_rectangle(- ENEMY_LENGTH, start_y , 0, start_y + ENEMY_LENGTH, fill = color)
+            enemies.append({"id": enemy, "health": health, "type": enemy_type, "speed": speed})
+        elif enemy_type == "tank":
+            color = "#7F1D1D"
+            health = 3
+            speed = 3
+            enemy = canvas.create_rectangle(- ENEMY_LENGTH, start_y , 0, start_y + ENEMY_LENGTH, fill = color)
+            enemies.append({"id": enemy, "health": health, "type": enemy_type, "speed": speed})
+        elif enemy_type == "speedy":
+            color = "green"
+            health = 1
+            speed = 6
+            enemy = canvas.create_rectangle(- ENEMY_LENGTH, start_y , 0, start_y + ENEMY_LENGTH, fill = color)
+            enemies.append({"id": enemy, "health": health, "type": enemy_type, "speed": speed})
     elif spawn_side == 2:
-        enemy = canvas.create_rectangle(start_x, SCREEN_HEIGHT , start_x + ENEMY_LENGTH, SCREEN_HEIGHT + ENEMY_LENGTH, fill = "purple" )
-        enemies.append(enemy)
+        enemy_type = random.choice(["normal", "tank", "speedy"])
+        if enemy_type == "normal":
+            color = "purple"
+            health = 1
+            speed = 3
+            enemy = canvas.create_rectangle(start_x, SCREEN_HEIGHT , start_x + ENEMY_LENGTH, SCREEN_HEIGHT + ENEMY_LENGTH, fill = color)
+            enemies.append({"id": enemy, "health": health, "type": enemy_type, "speed": speed})
+        elif enemy_type == "tank":
+            color = "#7F1D1D"
+            health = 3
+            speed = 3
+            enemy = canvas.create_rectangle(start_x, SCREEN_HEIGHT , start_x + ENEMY_LENGTH, SCREEN_HEIGHT + ENEMY_LENGTH, fill = color)
+            enemies.append({"id": enemy, "health": health, "type": enemy_type, "speed": speed})
+        elif enemy_type == "speedy":
+            color = "green"
+            health = 1
+            speed = 6
+            enemy = canvas.create_rectangle(start_x, SCREEN_HEIGHT , start_x + ENEMY_LENGTH, SCREEN_HEIGHT + ENEMY_LENGTH, fill = color)
+            enemies.append({"id": enemy, "health": health, "type": enemy_type, "speed": speed})
     elif spawn_side == 3:
-        enemy = canvas.create_rectangle(SCREEN_WIDTH, start_y, SCREEN_WIDTH + ENEMY_LENGTH, start_y + ENEMY_LENGTH, fill = "purple")
-        enemies.append(enemy)
+        enemy_type = random.choice(["normal", "tank", "speedy"])
+        if enemy_type == "normal":
+            color = "purple"
+            health = 1
+            speed = 3
+            enemy = canvas.create_rectangle(SCREEN_WIDTH, start_y, SCREEN_WIDTH + ENEMY_LENGTH, start_y + ENEMY_LENGTH, fill = color)
+            enemies.append({"id": enemy, "health": health, "type": enemy_type, "speed": speed})
+        elif enemy_type == "tank":
+            color = "#7F1D1D"
+            health = 3
+            speed = 3
+            enemy = canvas.create_rectangle(SCREEN_WIDTH, start_y, SCREEN_WIDTH + ENEMY_LENGTH, start_y + ENEMY_LENGTH, fill = color)
+            enemies.append({"id": enemy, "health": health, "type": enemy_type, "speed": speed})
+        elif enemy_type == "speedy":
+            color = "green"
+            health = 1
+            speed = 6
+            enemy = canvas.create_rectangle(SCREEN_WIDTH, start_y, SCREEN_WIDTH + ENEMY_LENGTH, start_y + ENEMY_LENGTH, fill = color)
+            enemies.append({"id": enemy, "health": health, "type": enemy_type, "speed": speed})
     elif spawn_side == 4:
-        enemy = canvas.create_rectangle(start_x, 0 , start_x + ENEMY_LENGTH, 0 - ENEMY_LENGTH, fill = "purple")
-        enemies.append(enemy)
+        enemy_type = random.choice(["normal", "tank", "speedy"])
+        if enemy_type == "normal":
+            color = "purple"
+            health = 1
+            speed = 3
+            enemy = canvas.create_rectangle(start_x, 0 , start_x + ENEMY_LENGTH, 0 - ENEMY_LENGTH, fill = color) 
+            enemies.append({"id": enemy, "health": health, "type": enemy_type, "speed": speed})
+        elif enemy_type == "tank":
+            color = "#7F1D1D"
+            health = 3
+            speed = 3
+            enemy = canvas.create_rectangle(start_x, 0 , start_x + ENEMY_LENGTH, 0 - ENEMY_LENGTH, fill = color) 
+            enemies.append({"id": enemy, "health": health, "type": enemy_type, "speed": speed})
+        elif enemy_type == "speedy":
+            color = "green"
+            health = 1
+            speed = 6
+            enemy = canvas.create_rectangle(start_x, 0 , start_x + ENEMY_LENGTH, 0 - ENEMY_LENGTH, fill = color) 
+            enemies.append({"id": enemy, "health": health, "type": enemy_type, "speed": speed})
     
     enemy_refresh_rate -= 10
     
-    root.after(100, make_enemy)
+    root.after(max(enemy_refresh_rate, 100), make_enemy)
 
 def move_enemies():
     px1, py1, px2, py2 = canvas.coords(player)
@@ -92,11 +159,11 @@ def move_enemies():
     player_center_y = (py2 + py1) / 2
 
     for enemy in enemies[:]:
-        coords = canvas.coords(enemy)
+        coords = canvas.coords(enemy["id"])
         if not coords:
             enemies.remove(enemy)
             continue
-        ex1, ey1, ex2, ey2 = canvas.coords(enemy)
+        ex1, ey1, ex2, ey2 = canvas.coords(enemy["id"])
         enemy_center_x = (ex2 + ex1) / 2
         enemy_center_y = (ey2 + ey1) / 2
 
@@ -108,10 +175,10 @@ def move_enemies():
         if distance == 0:
             continue  
     
-        move_x = (dx / distance) * ENEMY_VELO
-        move_y = (dy / distance) * ENEMY_VELO
+        move_x = (dx / distance) * enemy["speed"]
+        move_y = (dy / distance) * enemy["speed"]
 
-        canvas.move(enemy, move_x, move_y)
+        canvas.move(enemy["id"], move_x, move_y)
 
 def shoot(event):
     px1, py1, px2, py2 = canvas.coords(player)
@@ -124,8 +191,8 @@ def shoot(event):
     distance_y = player_center_y - mouse_y
     relative_distance = math.sqrt(distance_x ** 2 + distance_y ** 2)
 
-    dx = (distance_x / relative_distance) * BULLET_VELO
-    dy = (distance_y / relative_distance) * BULLET_VELO
+    dx = (distance_x / relative_distance) * BULLET_SPEED
+    dy = (distance_y / relative_distance) * BULLET_SPEED
 
     bullets.append(Bullet(canvas, px1 + 5, py1 + 5, px2 - 5, py2 - 5, -dx, -dy))
 
@@ -144,7 +211,7 @@ def check_hit(bullet):
     bx1, by1, bx2, by2 = bbox
 
     for enemy in enemies[:]:
-        enemy_bbox = canvas.bbox(enemy)
+        enemy_bbox = canvas.bbox(enemy["id"])
         if enemy_bbox is None:
             enemies.remove(enemy)
             continue
@@ -153,22 +220,28 @@ def check_hit(bullet):
 
         if bx1 < ex2 and bx2 > ex1 and by1 < ey2 and by2 > ey1:
             canvas.delete(bullet.id)
-            canvas.delete(enemy)
-
             if bullet in bullets:
                 bullets.remove(bullet)
+            
+            enemy["health"] -= 1
 
-            enemies.remove(enemy)
-
-            score += 1
-            canvas.itemconfig(score_text, text = f"Score: {score}")
-            return
+            if enemy["health"] == 0:
+                canvas.delete(enemy["id"])
+                enemies.remove(enemy)
+                score += 1
+                canvas.itemconfig(score_text, text = f"Score: {score}")
+                return
+            elif enemy["type"] == "tank":
+                if enemy["health"] == 2:
+                    canvas.itemconfig(enemy["id"], fill = "#DC2626")
+                elif enemy["health"] == 1:
+                    canvas.itemconfig(enemy["id"], fill = "#F87171")
         
 
 def check_collision_player(enemy):
     global health_bar, health
     px1, py1, px2, py2 = canvas.coords(player)
-    ex1, ey1, ex2, ey2 = canvas.coords(enemy)
+    ex1, ey1, ex2, ey2 = canvas.coords(enemy["id"])
 
     if px1 < ex2 and px2 > ex1 and py1 < ey2 and py2 > ey1:
         health -= 1
@@ -185,11 +258,11 @@ def check_collision_player(enemy):
         dy = ey_center - py_center
 
         if abs(dx) > abs(dy):
-            new_ex1 += ENEMY_VELO if dx > 0 else -ENEMY_VELO
+            new_ex1 += enemy["speed"] if dx > 0 else -enemy["speed"]
         else:
-            new_ey1 += ENEMY_VELO if dy > 0 else -ENEMY_VELO
+            new_ey1 += enemy["speed"] if dy > 0 else -enemy["speed"]
 
-        canvas.coords(enemy, new_ex1, new_ey1, new_ex1 + ENEMY_LENGTH, new_ey1 + ENEMY_LENGTH)
+        canvas.coords(enemy["id"], new_ex1, new_ey1, new_ex1 + ENEMY_LENGTH, new_ey1 + ENEMY_LENGTH)
 
 
 
@@ -200,6 +273,7 @@ def game_over():
     canvas.delete("all")
 
     game_over_text = canvas.create_text(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, text= "Game Over. Press r to Restart", fill = "white", font=("Arial", 12))
+    score_text = canvas.create_text(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 1.9, text = (f"Score: {score}"), fill = "white", font=("Arial", 12))
 
 keys = {
         "Left": False,
