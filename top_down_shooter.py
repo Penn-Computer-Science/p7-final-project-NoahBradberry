@@ -1,4 +1,4 @@
-#TODO death animation, enemy types (shoot back), waves, gun upgrades ( spread shot, bigger bullets)
+#TODO death animation, enemy types (shoot back, kamikaze), waves, gun upgrades ( spread shot, bigger bullets, piercing bullets, ricochet, slow down, charge shot)
 
 import tkinter as tk
 import random
@@ -8,7 +8,7 @@ PLAYER_LENGTH = 25
 PLAYER_VELO = 5
 ENEMY_LENGTH = 25
 BULLET_SPEED = 10
-MAX_HEALTH = 1000
+MAX_HEALTH = 500
 
 root = tk.Tk()
 root.title("Top-Down Shooter")
@@ -17,7 +17,7 @@ root.attributes("-fullscreen", True)
 SCREEN_WIDTH = root.winfo_screenwidth() #1920
 SCREEN_HEIGHT = root.winfo_screenheight() #1080
 
-canvas = tk.Canvas(root, bg = "#000001")
+canvas = tk.Canvas(root, bg = "black")
 canvas.pack(fill=tk.BOTH, expand=True)
 
 
@@ -54,100 +54,75 @@ def reset(event = None):
     health_bar_width = canvas.coords(health_bar)[2] - canvas.coords(health_bar)[0]
     score = 0
     score_text = canvas.create_text(SCREEN_WIDTH - 100, 40, text = f"Score: {score}", fill = "white", font = ("Arial", 30))
-    enemy_refresh_rate = 2000
+    enemy_refresh_rate = 1000
 
 def revive(event = None):
     reset()
     game_loop()
     make_enemy()
 
-
-def make_enemy():
-    global enemy, enemy_refresh_rate
+def spawn_enemy(color):
     spawn_side = random.randint(1, 4)
     start_x = random.randint(0, SCREEN_WIDTH)
     start_y = random.randint(0, SCREEN_HEIGHT)
-
     if spawn_side == 1:
-        enemy_type = random.choice(["normal", "tank", "speedy"])
-        if enemy_type == "normal":
-            color = "purple"
-            health = 1
-            speed = 3
-            enemy = canvas.create_rectangle(- ENEMY_LENGTH, start_y , 0, start_y + ENEMY_LENGTH, fill = color)
-            enemies.append({"id": enemy, "health": health, "type": enemy_type, "speed": speed})
-        elif enemy_type == "tank":
-            color = "#7F1D1D"
-            health = 3
-            speed = 3
-            enemy = canvas.create_rectangle(- ENEMY_LENGTH, start_y , 0, start_y + ENEMY_LENGTH, fill = color)
-            enemies.append({"id": enemy, "health": health, "type": enemy_type, "speed": speed})
-        elif enemy_type == "speedy":
-            color = "green"
-            health = 1
-            speed = 6
-            enemy = canvas.create_rectangle(- ENEMY_LENGTH, start_y , 0, start_y + ENEMY_LENGTH, fill = color)
-            enemies.append({"id": enemy, "health": health, "type": enemy_type, "speed": speed})
+        enemy = canvas.create_rectangle(- ENEMY_LENGTH, start_y , 0, start_y + ENEMY_LENGTH, fill = color)
     elif spawn_side == 2:
-        enemy_type = random.choice(["normal", "tank", "speedy"])
-        if enemy_type == "normal":
-            color = "purple"
-            health = 1
-            speed = 3
-            enemy = canvas.create_rectangle(start_x, SCREEN_HEIGHT , start_x + ENEMY_LENGTH, SCREEN_HEIGHT + ENEMY_LENGTH, fill = color)
-            enemies.append({"id": enemy, "health": health, "type": enemy_type, "speed": speed})
-        elif enemy_type == "tank":
-            color = "#7F1D1D"
-            health = 3
-            speed = 3
-            enemy = canvas.create_rectangle(start_x, SCREEN_HEIGHT , start_x + ENEMY_LENGTH, SCREEN_HEIGHT + ENEMY_LENGTH, fill = color)
-            enemies.append({"id": enemy, "health": health, "type": enemy_type, "speed": speed})
-        elif enemy_type == "speedy":
-            color = "green"
-            health = 1
-            speed = 6
-            enemy = canvas.create_rectangle(start_x, SCREEN_HEIGHT , start_x + ENEMY_LENGTH, SCREEN_HEIGHT + ENEMY_LENGTH, fill = color)
-            enemies.append({"id": enemy, "health": health, "type": enemy_type, "speed": speed})
+        enemy = canvas.create_rectangle(start_x, SCREEN_HEIGHT , start_x + ENEMY_LENGTH, SCREEN_HEIGHT + ENEMY_LENGTH, fill = color)
     elif spawn_side == 3:
-        enemy_type = random.choice(["normal", "tank", "speedy"])
-        if enemy_type == "normal":
-            color = "purple"
-            health = 1
-            speed = 3
-            enemy = canvas.create_rectangle(SCREEN_WIDTH, start_y, SCREEN_WIDTH + ENEMY_LENGTH, start_y + ENEMY_LENGTH, fill = color)
-            enemies.append({"id": enemy, "health": health, "type": enemy_type, "speed": speed})
-        elif enemy_type == "tank":
-            color = "#7F1D1D"
-            health = 3
-            speed = 3
-            enemy = canvas.create_rectangle(SCREEN_WIDTH, start_y, SCREEN_WIDTH + ENEMY_LENGTH, start_y + ENEMY_LENGTH, fill = color)
-            enemies.append({"id": enemy, "health": health, "type": enemy_type, "speed": speed})
-        elif enemy_type == "speedy":
-            color = "green"
-            health = 1
-            speed = 6
-            enemy = canvas.create_rectangle(SCREEN_WIDTH, start_y, SCREEN_WIDTH + ENEMY_LENGTH, start_y + ENEMY_LENGTH, fill = color)
-            enemies.append({"id": enemy, "health": health, "type": enemy_type, "speed": speed})
+        enemy = canvas.create_rectangle(SCREEN_WIDTH, start_y, SCREEN_WIDTH + ENEMY_LENGTH, start_y + ENEMY_LENGTH, fill = color)
     elif spawn_side == 4:
-        enemy_type = random.choice(["normal", "tank", "speedy"])
-        if enemy_type == "normal":
-            color = "purple"
-            health = 1
-            speed = 3
-            enemy = canvas.create_rectangle(start_x, 0 , start_x + ENEMY_LENGTH, 0 - ENEMY_LENGTH, fill = color) 
-            enemies.append({"id": enemy, "health": health, "type": enemy_type, "speed": speed})
-        elif enemy_type == "tank":
-            color = "#7F1D1D"
-            health = 3
-            speed = 3
-            enemy = canvas.create_rectangle(start_x, 0 , start_x + ENEMY_LENGTH, 0 - ENEMY_LENGTH, fill = color) 
-            enemies.append({"id": enemy, "health": health, "type": enemy_type, "speed": speed})
-        elif enemy_type == "speedy":
-            color = "green"
-            health = 1
-            speed = 6
-            enemy = canvas.create_rectangle(start_x, 0 , start_x + ENEMY_LENGTH, 0 - ENEMY_LENGTH, fill = color) 
-            enemies.append({"id": enemy, "health": health, "type": enemy_type, "speed": speed})
+        enemy = canvas.create_rectangle(start_x, 0 , start_x + ENEMY_LENGTH, 0 - ENEMY_LENGTH, fill = color)
+    return enemy
+
+def normal_enemy():
+    color = "purple"
+    health = 1
+    speed = 3
+    enemy = spawn_enemy(color)
+    enemies.append({"id": enemy, "health": health, "type": "normal", "speed": speed})
+
+def tank_enemy():
+    color = "#7F1D1D"
+    health = 3
+    speed = 2
+    enemy = spawn_enemy(color)
+    enemies.append({"id": enemy, "health": health, "type": "tank", "speed": speed})
+
+def speedy_enemy():
+    color = "#E0115F"
+    health = 1
+    speed = 6
+    enemy = spawn_enemy(color)
+    enemies.append({"id": enemy, "health": health, "type": "speedy", "speed": speed})
+
+def splitter_enemy():
+    color = "green"
+    health = 2
+    speed = 3
+    enemy = spawn_enemy(color)
+    enemies.append({"id": enemy, "health": health, "type": "splitter", "speed": speed})
+
+def kamikaze_enemy():
+    color = "#D0571C"
+    health = 1
+    speed = 3
+    enemy = spawn_enemy(color)
+    enemies.append({"id": enemy, "health": health, "type": "kamikaze", "speed": speed})
+
+def make_enemy():
+    global enemy_refresh_rate
+    enemy_type = random.choice(["normal", "tank", "speedy", "splitter", "kamikaze"])
+    if enemy_type == "normal":
+        normal_enemy()
+    elif enemy_type == "tank":
+        tank_enemy()
+    elif enemy_type == "speedy":
+        speedy_enemy()
+    elif enemy_type == "splitter":
+        splitter_enemy()
+    elif enemy_type == "kamikaze":
+        kamikaze_enemy()
     
     enemy_refresh_rate -= 10
     
@@ -213,10 +188,12 @@ def check_hit(bullet):
     for enemy in enemies[:]:
         enemy_bbox = canvas.bbox(enemy["id"])
         if enemy_bbox is None:
-            enemies.remove(enemy)
-            continue
+            if enemy in enemies:
+                enemies.remove(enemy)
+                continue
 
-        ex1, ey1, ex2, ey2 = enemy_bbox
+        try: ex1, ey1, ex2, ey2 = enemy_bbox
+        except: continue
 
         if bx1 < ex2 and bx2 > ex1 and by1 < ey2 and by2 > ey1:
             canvas.delete(bullet.id)
@@ -225,17 +202,45 @@ def check_hit(bullet):
             
             enemy["health"] -= 1
 
+            if enemy["type"] == "kamikaze":
+                explosion_radius = 500
+                explosion = canvas.create_oval(ex1 - explosion_radius, ey1 - explosion_radius, ex2 + explosion_radius, ey2 + explosion_radius, fill = "red")
+                x1, y1, x2, y2 = canvas.coords(explosion)
+                for other_enemy in enemies[:]:
+                    bbox = canvas.bbox(other_enemy["id"])
+                    if bbox is None:
+                        continue
+                    ex1_o, ey1_o, ex2_o, ey2_o = canvas.bbox(other_enemy["id"])
+                    if x1 < ex2_o and x2 > ex1_o and y1 < ey2_o and y2 > ey1_o:
+                        if other_enemy in enemies:
+                            canvas.delete(other_enemy["id"])
+                            enemies.remove(other_enemy)
+                            score += 1
+                            canvas.itemconfig(score_text, text = f"Score: {score}")
+                canvas.after(100, lambda: canvas.delete(explosion))
+        
+
             if enemy["health"] == 0:
                 canvas.delete(enemy["id"])
-                enemies.remove(enemy)
-                score += 1
-                canvas.itemconfig(score_text, text = f"Score: {score}")
-                return
+                if enemy in enemies:
+                    enemies.remove(enemy)
+                    score += 1
+                    canvas.itemconfig(score_text, text = f"Score: {score}")
+                    return
             elif enemy["type"] == "tank":
                 if enemy["health"] == 2:
                     canvas.itemconfig(enemy["id"], fill = "#DC2626")
                 elif enemy["health"] == 1:
                     canvas.itemconfig(enemy["id"], fill = "#F87171")
+            elif enemy["type"] == "splitter" and enemy["health"] == 1:
+                canvas.delete(enemy["id"])
+                enemies.remove(enemy)
+                enemy = canvas.create_rectangle(ex1, ey1, ex1 + ENEMY_LENGTH, ey1 + ENEMY_LENGTH, fill = "green")
+                enemies.append({"id": enemy, "health": 1, "type": "splitter", "speed": 3})
+                enemy = canvas.create_rectangle(ex1, ey1, ex1 - ENEMY_LENGTH, ey1 - ENEMY_LENGTH, fill = "green")
+                enemies.append({"id": enemy, "health": 1, "type": "splitter", "speed": 3})
+            
+                
         
 
 def check_collision_player(enemy):
@@ -264,9 +269,6 @@ def check_collision_player(enemy):
 
         canvas.coords(enemy["id"], new_ex1, new_ey1, new_ex1 + ENEMY_LENGTH, new_ey1 + ENEMY_LENGTH)
 
-
-
-
 def game_over():
     global alive
     alive = False
@@ -279,7 +281,12 @@ keys = {
         "Left": False,
         "Right": False,
         "Up": False,
-        "Down": False
+        "Down": False,
+        "w": False,
+        "a": False,
+        "s": False,
+        "d": False
+
 }
 
 def key_press(event):
@@ -302,24 +309,24 @@ def game_loop():
 
     if alive:
 
-        if keys["Left"]:
+        if keys["Left"] or keys["a"]:
             dx -= PLAYER_VELO
-        elif keys["Right"]:
+        elif keys["Right"] or keys["d"]:
             dx += PLAYER_VELO
-        elif keys["Up"]:
+        elif keys["Up"] or keys["w"]:
             dy -= PLAYER_VELO
-        elif keys["Down"]:
+        elif keys["Down"] or keys["s"]:
             dy += PLAYER_VELO
-        if keys["Left"] and keys["Down"]:
+        if keys["Left"] and keys["Down"] or keys["a"] and keys["s"]:
             dx = - math.sqrt(0.5 * (PLAYER_VELO ** 2))
             dy = math.sqrt(0.5 * (PLAYER_VELO ** 2))
-        if keys["Left"] and keys["Up"]:
+        if keys["Left"] and keys["Up"] or keys["a"] and keys["w"]:
             dx = - math.sqrt(0.5 * (PLAYER_VELO ** 2))
             dy = - math.sqrt(0.5 * (PLAYER_VELO ** 2))
-        if keys["Right"] and keys["Down"]:
+        if keys["Right"] and keys["Down"] or keys["d"] and keys["s"]:
             dx = math.sqrt(0.5 * (PLAYER_VELO ** 2))
             dy = math.sqrt(0.5 * (PLAYER_VELO ** 2))
-        if keys["Right"] and keys["Up"]:
+        if keys["Right"] and keys["Up"] or keys["d"] and keys["w"]:
             dx = math.sqrt(0.5 * (PLAYER_VELO ** 2))
             dy = - math.sqrt(0.5 * (PLAYER_VELO ** 2))
 
