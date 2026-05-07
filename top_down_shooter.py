@@ -1,14 +1,16 @@
-#TODO death animation, enemy types (shoot back, kamikaze), waves, gun upgrades ( spread shot, bigger bullets, piercing bullets, ricochet, slow down, charge shot)
+#TODO death animation, waves, gun upgrades ( spread shot, bigger bullets, piercing bullets, ricochet, slow down, charge shot)
 
 import tkinter as tk
 import random
 import math
 
 PLAYER_LENGTH = 25
-PLAYER_VELO = 5
+PLAYER_SPEED = 5
 ENEMY_LENGTH = 25
 BULLET_SPEED = 10
 MAX_HEALTH = 500
+POWERUP_RADIUS = 20
+POWERUP_SPEED = 3
 
 root = tk.Tk()
 root.title("Top-Down Shooter")
@@ -32,17 +34,8 @@ class Bullet:
      def move(self):
         self.canvas.move(self.id, self.dx, self.dy)
 
-class Bulky_Enemy:
-    def __init__(self, canvas, x1, y1, x2, y2, dx, dy):
-        self.canvas = canvas
-        self.dx = dx
-        self.dy = dy
-
-        self.id = canvas.create_oval(x1, y1, x2, y2, fill = "red")
-
-
 def reset(event = None):
-    global player, enemies, bullets, health, alive, health_bar, health_bar_width, score, score_text, enemy_refresh_rate
+    global player, enemies, bullets, health, alive, health_bar, health_bar_width, score, score_text, enemy_refresh_rate, powerup_refresh_rate, powerups, spread_shot
     enemies = []
     bullets = []
     alive = True
@@ -55,6 +48,9 @@ def reset(event = None):
     score = 0
     score_text = canvas.create_text(SCREEN_WIDTH - 100, 40, text = f"Score: {score}", fill = "white", font = ("Arial", 30))
     enemy_refresh_rate = 1000
+    powerup_refresh_rate = 5000
+    powerups = []
+    spread_shot = False
 
 def revive(event = None):
     reset()
@@ -126,7 +122,7 @@ def make_enemy():
     
     enemy_refresh_rate -= 10
     
-    root.after(max(enemy_refresh_rate, 100), make_enemy)
+    root.after(max(enemy_refresh_rate, 500), make_enemy)
 
 def move_enemies():
     px1, py1, px2, py2 = canvas.coords(player)
@@ -168,8 +164,26 @@ def shoot(event):
 
     dx = (distance_x / relative_distance) * BULLET_SPEED
     dy = (distance_y / relative_distance) * BULLET_SPEED
-
     bullets.append(Bullet(canvas, px1 + 5, py1 + 5, px2 - 5, py2 - 5, -dx, -dy))
+
+    if spread_shot:
+        mouse_x += 30
+        mouse_y += 30
+        distance_x = player_center_x - mouse_x
+        distance_y = player_center_y - mouse_y
+        relative_distance = math.sqrt(distance_x ** 2 + distance_y ** 2)
+        dx = (distance_x / relative_distance) * BULLET_SPEED
+        dy = (distance_y / relative_distance) * BULLET_SPEED
+        bullets.append(Bullet(canvas, px1 + 5, py1 + 5, px2 - 5, py2 - 5, -dx, -dy))
+
+        mouse_x -= 60
+        mouse_y -= 60
+        distance_x = player_center_x - mouse_x
+        distance_y = player_center_y - mouse_y
+        relative_distance = math.sqrt(distance_x ** 2 + distance_y ** 2)
+        dx = (distance_x / relative_distance) * BULLET_SPEED
+        dy = (distance_y / relative_distance) * BULLET_SPEED
+        bullets.append(Bullet(canvas, px1 + 5, py1 + 5, px2 - 5, py2 - 5, -dx, -dy))
 
 def check_delete(bullet):
     bx1, by1, bx2, by2 = canvas.coords(bullet.id)
@@ -178,7 +192,7 @@ def check_delete(bullet):
         bullets.remove(bullet)
 
 def check_hit(bullet):
-    global score
+    global score, health
     bbox = canvas.bbox(bullet.id)
     if bbox is None:
         return
@@ -203,9 +217,10 @@ def check_hit(bullet):
             enemy["health"] -= 1
 
             if enemy["type"] == "kamikaze":
-                explosion_radius = 500
+                explosion_radius = 100
                 explosion = canvas.create_oval(ex1 - explosion_radius, ey1 - explosion_radius, ex2 + explosion_radius, ey2 + explosion_radius, fill = "red")
                 x1, y1, x2, y2 = canvas.coords(explosion)
+                px1, py1, px2, py2 = canvas.coords(player)
                 for other_enemy in enemies[:]:
                     bbox = canvas.bbox(other_enemy["id"])
                     if bbox is None:
@@ -217,6 +232,12 @@ def check_hit(bullet):
                             enemies.remove(other_enemy)
                             score += 1
                             canvas.itemconfig(score_text, text = f"Score: {score}")
+                
+                if  x1 < px2 and x2 > px1 and y1 < py2 and y2 > py1:
+                    health -= 50
+                    x1, y1, x2, y2 = canvas.coords(health_bar)
+                    new_x2 = x1 + (health / MAX_HEALTH) * health_bar_width
+                    canvas.coords(health_bar, x1, y1, new_x2, y2)
                 canvas.after(100, lambda: canvas.delete(explosion))
         
 
@@ -240,10 +261,7 @@ def check_hit(bullet):
                 enemy = canvas.create_rectangle(ex1, ey1, ex1 - ENEMY_LENGTH, ey1 - ENEMY_LENGTH, fill = "green")
                 enemies.append({"id": enemy, "health": 1, "type": "splitter", "speed": 3})
             
-                
-        
-
-def check_collision_player(enemy):
+def check_collision_player_enemy(enemy):
     global health_bar, health
     px1, py1, px2, py2 = canvas.coords(player)
     ex1, ey1, ex2, ey2 = canvas.coords(enemy["id"])
@@ -268,6 +286,67 @@ def check_collision_player(enemy):
             new_ey1 += enemy["speed"] if dy > 0 else -enemy["speed"]
 
         canvas.coords(enemy["id"], new_ex1, new_ey1, new_ex1 + ENEMY_LENGTH, new_ey1 + ENEMY_LENGTH)
+
+def spawn_powerup(color, type):
+    spawn_side = random.randint(1, 4)
+    start_x = random.randint(0, SCREEN_WIDTH)
+    start_y = random.randint(0, SCREEN_HEIGHT)
+    target_x = random.randint(0, SCREEN_WIDTH)
+    target_y = random.randint(0, SCREEN_HEIGHT)
+    if spawn_side == 1:
+        id = canvas.create_oval(- POWERUP_RADIUS, start_y , 0, start_y + POWERUP_RADIUS, fill = color)
+    elif spawn_side == 2:
+        id = canvas.create_oval(start_x, SCREEN_HEIGHT , start_x + POWERUP_RADIUS, SCREEN_HEIGHT + POWERUP_RADIUS, fill = color)
+    elif spawn_side == 3:
+        id = canvas.create_oval(SCREEN_WIDTH, start_y, SCREEN_WIDTH + POWERUP_RADIUS, start_y + POWERUP_RADIUS, fill = color)
+    elif spawn_side == 4:
+        id = canvas.create_oval(start_x, 0 , start_x + POWERUP_RADIUS, 0 - POWERUP_RADIUS, fill = color)
+    return { "id": id, "target_x": target_x, "target_y": target_y, "type": type}
+
+def make_powerup():
+    global powerup_refresh_rate
+    powerup_type = random.choice(["spread_shot"])
+    if powerup_type == "spread_shot":
+        powerup = spawn_powerup("#F97316", powerup_type)
+        powerups.append(powerup)
+
+    powerup_refresh_rate -= 10
+    
+    root.after(max(powerup_refresh_rate, 100), make_powerup)
+
+def move_powerups():
+    for powerup in powerups:
+        try: x1, y1, x2, y2 = canvas.coords(powerup["id"])
+        except: powerups.remove(powerup)
+
+        center_x = (x2 + x1) / 2
+        center_y = (y2 + y1) / 2
+
+        dx = powerup["target_x"] - center_x
+        dy = powerup["target_y"] - center_y
+
+        distance = math.sqrt(dx**2 + dy**2)
+
+        if distance < 2:
+            continue
+
+        move_x = (dx / distance) * POWERUP_SPEED
+        move_y = (dy / distance) * POWERUP_SPEED
+
+        canvas.move(powerup["id"], move_x, move_y)
+
+def check_colision_player_powerup(powerup):
+    global spread_shot
+    plx1, ply1, plx2, ply2 = canvas.coords(player)
+    pox1, poy1, pox2, poy2 = canvas.coords(powerup["id"])
+
+    if plx1 < pox2 and plx2 > pox1 and ply1 < poy2 and ply2 > poy1:
+        if powerup["type"] == "spread_shot":
+            spread_shot = True
+        canvas.delete(powerup["id"])
+
+        if powerup in powerups:
+            powerups.remove(powerup)
 
 def game_over():
     global alive
@@ -310,25 +389,25 @@ def game_loop():
     if alive:
 
         if keys["Left"] or keys["a"]:
-            dx -= PLAYER_VELO
+            dx -= PLAYER_SPEED
         elif keys["Right"] or keys["d"]:
-            dx += PLAYER_VELO
+            dx += PLAYER_SPEED
         elif keys["Up"] or keys["w"]:
-            dy -= PLAYER_VELO
+            dy -= PLAYER_SPEED
         elif keys["Down"] or keys["s"]:
-            dy += PLAYER_VELO
+            dy += PLAYER_SPEED
         if keys["Left"] and keys["Down"] or keys["a"] and keys["s"]:
-            dx = - math.sqrt(0.5 * (PLAYER_VELO ** 2))
-            dy = math.sqrt(0.5 * (PLAYER_VELO ** 2))
+            dx = - math.sqrt(0.5 * (PLAYER_SPEED ** 2))
+            dy = math.sqrt(0.5 * (PLAYER_SPEED ** 2))
         if keys["Left"] and keys["Up"] or keys["a"] and keys["w"]:
-            dx = - math.sqrt(0.5 * (PLAYER_VELO ** 2))
-            dy = - math.sqrt(0.5 * (PLAYER_VELO ** 2))
+            dx = - math.sqrt(0.5 * (PLAYER_SPEED ** 2))
+            dy = - math.sqrt(0.5 * (PLAYER_SPEED ** 2))
         if keys["Right"] and keys["Down"] or keys["d"] and keys["s"]:
-            dx = math.sqrt(0.5 * (PLAYER_VELO ** 2))
-            dy = math.sqrt(0.5 * (PLAYER_VELO ** 2))
+            dx = math.sqrt(0.5 * (PLAYER_SPEED ** 2))
+            dy = math.sqrt(0.5 * (PLAYER_SPEED ** 2))
         if keys["Right"] and keys["Up"] or keys["d"] and keys["w"]:
-            dx = math.sqrt(0.5 * (PLAYER_VELO ** 2))
-            dy = - math.sqrt(0.5 * (PLAYER_VELO ** 2))
+            dx = math.sqrt(0.5 * (PLAYER_SPEED ** 2))
+            dy = - math.sqrt(0.5 * (PLAYER_SPEED ** 2))
 
         px1, py1, px2, py2 = canvas.coords(player)
 
@@ -340,6 +419,7 @@ def game_loop():
         
         
         move_enemies()
+        move_powerups()
 
         for bullet in bullets[:]:
             bullet.move()
@@ -348,7 +428,10 @@ def game_loop():
                 check_hit(bullet)
             
         for enemy in enemies[:]:
-            check_collision_player(enemy)
+            check_collision_player_enemy(enemy)
+
+        for powerup in powerups[:]:
+            check_colision_player_powerup(powerup)
 
         
         if health <= 0:
@@ -365,4 +448,5 @@ def game_loop():
 reset()
 game_loop()
 make_enemy()
+make_powerup()
 root.mainloop()
