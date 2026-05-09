@@ -1,8 +1,9 @@
-#TODO death animation, waves, gun upgrades ( spread shot, bigger bullets, piercing bullets, ricochet, slow down, charge shot)
+#TODO death animation, waves, gun upgrades (, bigger bullets, piercing bullets, ricochet, slow down, charge shot)
 
 import tkinter as tk
 import random
 import math
+import time
 
 PLAYER_LENGTH = 25
 PLAYER_SPEED = 5
@@ -22,6 +23,7 @@ SCREEN_HEIGHT = root.winfo_screenheight() #1080
 canvas = tk.Canvas(root, bg = "black")
 canvas.pack(fill=tk.BOTH, expand=True)
 
+display_names = {"spread_shot": "Spread Shot", "bigger_bullets": "Bigger Bullets"}
 
 class Bullet:
      def __init__(self, canvas, x1, y1, x2, y2, dx, dy):
@@ -35,7 +37,7 @@ class Bullet:
         self.canvas.move(self.id, self.dx, self.dy)
 
 def reset(event = None):
-    global player, enemies, bullets, health, alive, health_bar, health_bar_width, score, score_text, enemy_refresh_rate, powerup_refresh_rate, powerups, spread_shot
+    global player, enemies, bullets, health, alive, health_bar, health_bar_width, score, score_text, enemy_refresh_rate, powerup_refresh_rate, powerups, spread_shot, active_powerups, powerups_text, bullet_radius, bigger_bullets
     enemies = []
     bullets = []
     alive = True
@@ -51,6 +53,10 @@ def reset(event = None):
     powerup_refresh_rate = 5000
     powerups = []
     spread_shot = False
+    bigger_bullets = False
+    active_powerups = {"spread_shot": 0, "bigger_bullets": 0}
+    powerups_text = canvas.create_text(10, 40, text = "", fill = "white", font = ("Arial", 20), anchor = "w")
+    bullet_radius = 5
 
 def revive(event = None):
     reset()
@@ -152,6 +158,7 @@ def move_enemies():
         canvas.move(enemy["id"], move_x, move_y)
 
 def shoot(event):
+    global bullet_radius
     px1, py1, px2, py2 = canvas.coords(player)
     player_center_x = (px2 + px1) / 2
     player_center_y = (py2 + py1) / 2
@@ -164,7 +171,13 @@ def shoot(event):
 
     dx = (distance_x / relative_distance) * BULLET_SPEED
     dy = (distance_y / relative_distance) * BULLET_SPEED
-    bullets.append(Bullet(canvas, px1 + 5, py1 + 5, px2 - 5, py2 - 5, -dx, -dy))
+
+    if bigger_bullets:
+        bullet_radius = 20
+    else:
+        bullet_radius = 10
+
+    bullets.append(Bullet(canvas, player_center_x - bullet_radius, player_center_y - bullet_radius, player_center_x + bullet_radius, player_center_y + bullet_radius, -dx, -dy))
 
     if spread_shot:
         mouse_x += 30
@@ -174,7 +187,7 @@ def shoot(event):
         relative_distance = math.sqrt(distance_x ** 2 + distance_y ** 2)
         dx = (distance_x / relative_distance) * BULLET_SPEED
         dy = (distance_y / relative_distance) * BULLET_SPEED
-        bullets.append(Bullet(canvas, px1 + 5, py1 + 5, px2 - 5, py2 - 5, -dx, -dy))
+        bullets.append(Bullet(canvas, player_center_x - bullet_radius, player_center_y - bullet_radius, player_center_x + bullet_radius, player_center_y + bullet_radius, -dx, -dy))
 
         mouse_x -= 60
         mouse_y -= 60
@@ -183,7 +196,7 @@ def shoot(event):
         relative_distance = math.sqrt(distance_x ** 2 + distance_y ** 2)
         dx = (distance_x / relative_distance) * BULLET_SPEED
         dy = (distance_y / relative_distance) * BULLET_SPEED
-        bullets.append(Bullet(canvas, px1 + 5, py1 + 5, px2 - 5, py2 - 5, -dx, -dy))
+        bullets.append(Bullet(canvas, player_center_x - bullet_radius, player_center_y - bullet_radius, player_center_x + bullet_radius, player_center_y + bullet_radius, -dx, -dy))
 
 def check_delete(bullet):
     bx1, by1, bx2, by2 = canvas.coords(bullet.id)
@@ -305,9 +318,15 @@ def spawn_powerup(color, type):
 
 def make_powerup():
     global powerup_refresh_rate
-    powerup_type = random.choice(["spread_shot"])
+    powerup_type = random.choice(["spread_shot", "health", "bigger_bullets"])
     if powerup_type == "spread_shot":
         powerup = spawn_powerup("#F97316", powerup_type)
+        powerups.append(powerup)
+    elif powerup_type == "health":
+        powerup = spawn_powerup("#32CD32", powerup_type)
+        powerups.append(powerup)
+    elif powerup_type == "bigger_bullets":
+        powerup = spawn_powerup("#DC2626", powerup_type)
         powerups.append(powerup)
 
     powerup_refresh_rate -= 10
@@ -328,7 +347,8 @@ def move_powerups():
         distance = math.sqrt(dx**2 + dy**2)
 
         if distance < 2:
-            continue
+            powerup["target_x"] = random.randint(0, SCREEN_WIDTH)
+            powerup["target_y"] = random.randint(0, SCREEN_HEIGHT)
 
         move_x = (dx / distance) * POWERUP_SPEED
         move_y = (dy / distance) * POWERUP_SPEED
@@ -336,15 +356,28 @@ def move_powerups():
         canvas.move(powerup["id"], move_x, move_y)
 
 def check_colision_player_powerup(powerup):
-    global spread_shot
+    global spread_shot, active_powerups, health, bullet_radius, bigger_bullets
     plx1, ply1, plx2, ply2 = canvas.coords(player)
     pox1, poy1, pox2, poy2 = canvas.coords(powerup["id"])
 
     if plx1 < pox2 and plx2 > pox1 and ply1 < poy2 and ply2 > poy1:
         if powerup["type"] == "spread_shot":
             spread_shot = True
-        canvas.delete(powerup["id"])
+            active_powerups["spread_shot"] = time.time() + 5
+        elif powerup["type"] == "health":
+            if health + 50 > 500:
+                health = 500
+            else:
+                health += 50
+            x1, y1, x2, y2 = canvas.coords(health_bar)
+            new_x2 = x1 + (health / MAX_HEALTH) * health_bar_width
+            canvas.coords(health_bar, x1, y1, new_x2, y2)
+        elif powerup["type"] == "bigger_bullets":
+            bigger_bullets = True
+            active_powerups["bigger_bullets"] = time.time() + 5
 
+
+        canvas.delete(powerup["id"])
         if powerup in powerups:
             powerups.remove(powerup)
 
@@ -382,7 +415,8 @@ root.bind("r", reset)
 root.bind("<Button-1>", shoot)
 root.bind("<Escape>", lambda e: root.destroy())
 
-def game_loop():    
+def game_loop():
+    global spread_shot, bigger_bullets
     dx = 0
     dy = 0
 
@@ -432,18 +466,32 @@ def game_loop():
 
         for powerup in powerups[:]:
             check_colision_player_powerup(powerup)
-
         
+        if spread_shot and time.time() > active_powerups["spread_shot"]:
+            spread_shot = False
+        
+        if bigger_bullets and time.time() > active_powerups["bigger_bullets"]:
+            bigger_bullets = False
+        
+        powerup_lines = []
+        
+        for powerup in active_powerups:
+            time_left = active_powerups[powerup] - time.time()
+
+            if time_left > 0:
+                powerup_lines.append(f"{display_names[powerup]}: {round(time_left, 1)}s")
+
+            canvas.itemconfig(powerups_text, text = "\n".join(powerup_lines))
+
         if health <= 0:
             game_over()
-            
-
-        root.after(16, game_loop)
 
         if alive == True:
             root.bind("r", reset)
         else:
             root.bind("r", revive)
+
+        root.after(16, game_loop)
 
 reset()
 game_loop()
