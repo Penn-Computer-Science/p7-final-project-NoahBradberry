@@ -3,7 +3,7 @@ import random
 import math
 import time
 from bullet import Bullet
-from enemy import Enemy, SplitterEnemy, TankEnemy
+from enemy import Enemy, NormalEnemy, SplitterEnemy, TankEnemy, SpeedyEnemy, KamikazeEnemy
 
 PLAYER_LENGTH = 25
 PLAYER_SPEED = 5
@@ -71,62 +71,14 @@ def random_spawn_position():
     else:
         return random.randint(0, SCREEN_WIDTH), -ENEMY_LENGTH
 
-def normal_enemy():
-    x, y = random_spawn_position()
-    color = "purple"
-    health = 1
-    speed = 3
-    type = "normal"
-    enemy = Enemy(canvas, x, y, ENEMY_LENGTH, color, health, speed, type)
-    enemies.append(enemy)
-
-def tank_enemy():
-    x, y = random_spawn_position()
-    enemy = Enemy(canvas, x, y, ENEMY_LENGTH)
-    enemies.append(enemy)
-
-def speedy_enemy():
-    x, y = random_spawn_position()
-    color = "#E0115F"
-    health = 1
-    speed = 6
-    type = "speedy"
-    enemy = Enemy(canvas, x, y, ENEMY_LENGTH, color, health, speed, type)
-    enemies.append(enemy)
-
-def splitter_enemy():
-    x, y = random_spawn_position()
-    color = "green"
-    health = 2
-    speed = 3
-    type = "splitter"
-    enemy = Enemy(canvas, x, y, ENEMY_LENGTH, color, health, speed, type)
-    enemies.append(enemy)
-
-def kamikaze_enemy():
-    x, y = random_spawn_position()
-    color = "#D0571C"
-    health = 1
-    speed = 3
-    type = "kamikaze"
-    enemy = Enemy(canvas, x, y, ENEMY_LENGTH, color, health, speed, type)
-    enemies.append(enemy)
-
 def make_enemy():
     global enemy_refresh_rate
-    enemy_type = random.choice(["normal", "tank", "speedy", "splitter", "kamikaze"])
-    if enemy_type == "normal":
-        normal_enemy()
-    elif enemy_type == "tank":
-        tank_enemy()
-    elif enemy_type == "speedy":
-        speedy_enemy()
-    elif enemy_type == "splitter":
-        splitter_enemy()
-    elif enemy_type == "kamikaze":
-        kamikaze_enemy()
-    
+    enemy_class = random.choice([NormalEnemy, TankEnemy, SpeedyEnemy, SplitterEnemy, KamikazeEnemy])
+    x,y = random_spawn_position()
+    enemy = enemy_class(canvas, x, y, ENEMY_LENGTH)
+    enemies.append(enemy)
     enemy_refresh_rate -= 10
+
     if not god:
         root.after(max(enemy_refresh_rate, 500), make_enemy)
     else:
@@ -134,30 +86,27 @@ def make_enemy():
 
 def move_enemies():
     px1, py1, px2, py2 = canvas.coords(player)
+
     player_center_x = (px2 + px1) / 2
     player_center_y = (py2 + py1) / 2
 
     for enemy in enemies[:]:
-        coords = canvas.coords(enemy.id)
-        if not coords:
-            enemies.remove(enemy)
-            continue
-        ex1, ey1, ex2, ey2 = canvas.coords(enemy.id)
-        enemy_center_x = (ex2 + ex1) / 2
-        enemy_center_y = (ey2 + ey1) / 2
+        if not canvas.coords[enemy.id]:
+            if enemy in enemies:
+                enemies.remove(enemy)
+                continue
+            enemy.move_towards_player(player_center_x, player_center_y)
 
-        dx = player_center_x - enemy_center_x
-        dy = player_center_y - enemy_center_y
+def damage_player(amount):
+    global health
 
-        distance = math.sqrt(dx**2 + dy**2)
+    health -= amount
 
-        if distance == 0:
-            continue  
-    
-        move_x = (dx / distance) * enemy.speed
-        move_y = (dy / distance) * enemy.speed
+    x1, y1, x2, y2 = canvas.coords(health_bar)
 
-        canvas.move(enemy.id, move_x, move_y)
+    new_x2 = x1 + (health / MAX_HEALTH) * health_bar_width
+
+    canvas.coords(health_bar, x1, y1, new_x2, y2)
 
 def shoot(event):
     global bullet_radius
@@ -207,7 +156,7 @@ def check_delete(bullet):
         bullets.remove(bullet)
 
 def check_hit(bullet):
-    global score, health
+    global score
     bbox = canvas.bbox(bullet.id)
     if bbox is None:
         return
@@ -223,6 +172,7 @@ def check_hit(bullet):
 
         try: ex1, ey1, ex2, ey2 = enemy_bbox
         except: continue
+        
 
         if bx1 < ex2 and bx2 > ex1 and by1 < ey2 and by2 > ey1:
             if piercing == False:
@@ -230,38 +180,14 @@ def check_hit(bullet):
                 if bullet in bullets:
                     bullets.remove(bullet)
             
-            enemy.take_damage(enemies)
-
-            if enemy.type == "kamikaze":
-                explosion_radius = 100
-                explosion = canvas.create_oval(ex1 - explosion_radius, ey1 - explosion_radius, ex2 + explosion_radius, ey2 + explosion_radius, fill = "red")
-                x1, y1, x2, y2 = canvas.coords(explosion)
-                px1, py1, px2, py2 = canvas.coords(player)
-                for other_enemy in enemies[:]:
-                    bbox = canvas.bbox(other_enemy.id)
-                    if bbox is None:
-                        continue
-                    ex1_o, ey1_o, ex2_o, ey2_o = canvas.bbox(other_enemy.id)
-                    if x1 < ex2_o and x2 > ex1_o and y1 < ey2_o and y2 > ey1_o:
-                        if other_enemy in enemies:
-                            canvas.delete(other_enemy.id)
-                            enemies.remove(other_enemy)
-                            score += 1
-                            canvas.itemconfig(score_text, text = f"Score: {score}")
-                
-                if  x1 < px2 and x2 > px1 and y1 < py2 and y2 > py1:
-                    health -= 50
-                    x1, y1, x2, y2 = canvas.coords(health_bar)
-                    new_x2 = x1 + (health / MAX_HEALTH) * health_bar_width
-                    canvas.coords(health_bar, x1, y1, new_x2, y2)
-                canvas.after(100, lambda: canvas.delete(explosion))
-        
-
-            elif enemy.type == "tank":
-                TankEnemy.take_damage(enemy, enemies)
+            old_enemy_count = len(enemies)
             
-            elif enemy.type == "splitter" and enemy.health == 1:
-                SplitterEnemy.die(enemy, enemies)
+            enemy.take_damage(enemies, player, damage_player)
+
+            if len(enemies) < old_enemy_count:
+                score += 1
+                canvas.itemconfig(score_text, text = f"Score: {score}")
+
             
 def check_collision_player_enemy(enemy):
     global health_bar, health
@@ -459,8 +385,6 @@ def game_loop():
         if 0 <= py1 + dy and py2 + dy <= SCREEN_HEIGHT:
             canvas.move(player, 0, dy)
         
-        
-        move_enemies()
         move_powerups()
 
         for bullet in bullets[:]:
@@ -470,6 +394,7 @@ def game_loop():
                 check_hit(bullet)
             
         for enemy in enemies[:]:
+            enemy.move_towards_player(px1, py1)
             check_collision_player_enemy(enemy)
 
         for powerup in powerups[:]:
