@@ -56,18 +56,13 @@ def revive(event = None):
     make_enemy()
 
 def random_spawn_position():
-
     side = random.randint(1, 4)
-
     if side == 1:
         return -ENEMY_LENGTH, random.randint(0, SCREEN_HEIGHT)
-
     elif side == 2:
         return random.randint(0, SCREEN_WIDTH), SCREEN_HEIGHT
-
     elif side == 3:
         return SCREEN_WIDTH, random.randint(0, SCREEN_HEIGHT)
-
     else:
         return random.randint(0, SCREEN_WIDTH), -ENEMY_LENGTH
 
@@ -78,7 +73,6 @@ def make_enemy():
     enemy = enemy_class(canvas, x, y, ENEMY_LENGTH)
     enemies.append(enemy)
     enemy_refresh_rate -= 10
-
     if not god:
         root.after(max(enemy_refresh_rate, 500), make_enemy)
     else:
@@ -99,11 +93,9 @@ def move_enemies():
 
 def damage_player(amount):
     global health
-
     health -= amount
 
     x1, y1, x2, y2 = canvas.coords(health_bar)
-
     new_x2 = x1 + (health / MAX_HEALTH) * health_bar_width
 
     canvas.coords(health_bar, x1, y1, new_x2, y2)
@@ -116,77 +108,22 @@ def shoot(event):
     mouse_x = event.x
     mouse_y = event.y
 
-    distance_x = player_center_x - mouse_x
-    distance_y = player_center_y - mouse_y
-    relative_distance = math.sqrt(distance_x ** 2 + distance_y ** 2)
-
-    dx = (distance_x / relative_distance) * BULLET_SPEED
-    dy = (distance_y / relative_distance) * BULLET_SPEED
-
     if bigger_bullets:
         bullet_radius = 20
     else:
         bullet_radius = 10
 
-    bullets.append(Bullet(canvas, player_center_x - bullet_radius, player_center_y - bullet_radius, player_center_x + bullet_radius, player_center_y + bullet_radius, -dx, -dy))
+    bullets.append(Bullet(canvas, player_center_x - bullet_radius, player_center_y - bullet_radius, player_center_x + bullet_radius, player_center_y + bullet_radius, player_center_x, player_center_y, mouse_x, mouse_y))
 
     if spread_shot:
         mouse_x += 30
         mouse_y += 30
-        distance_x = player_center_x - mouse_x
-        distance_y = player_center_y - mouse_y
-        relative_distance = math.sqrt(distance_x ** 2 + distance_y ** 2)
-        dx = (distance_x / relative_distance) * BULLET_SPEED
-        dy = (distance_y / relative_distance) * BULLET_SPEED
-        bullets.append(Bullet(canvas, player_center_x - bullet_radius, player_center_y - bullet_radius, player_center_x + bullet_radius, player_center_y + bullet_radius, -dx, -dy))
+        bullets.append(Bullet(canvas, player_center_x - bullet_radius, player_center_y - bullet_radius, player_center_x + bullet_radius, player_center_y + bullet_radius, player_center_x, player_center_y, mouse_x, mouse_y))
 
         mouse_x -= 60
         mouse_y -= 60
-        distance_x = player_center_x - mouse_x
-        distance_y = player_center_y - mouse_y
-        relative_distance = math.sqrt(distance_x ** 2 + distance_y ** 2)
-        dx = (distance_x / relative_distance) * BULLET_SPEED
-        dy = (distance_y / relative_distance) * BULLET_SPEED
-        bullets.append(Bullet(canvas, player_center_x - bullet_radius, player_center_y - bullet_radius, player_center_x + bullet_radius, player_center_y + bullet_radius, -dx, -dy))
+        bullets.append(Bullet(canvas, player_center_x - bullet_radius, player_center_y - bullet_radius, player_center_x + bullet_radius, player_center_y + bullet_radius, player_center_x, player_center_y, mouse_x, mouse_y))
 
-def check_delete(bullet):
-    bx1, by1, bx2, by2 = canvas.coords(bullet.id)
-    if bx2 < 0 or bx1 > SCREEN_WIDTH or by1 > SCREEN_HEIGHT or by2 < 0:
-        canvas.delete(bullet.id)
-        bullets.remove(bullet)
-
-def check_hit(bullet):
-    global score
-    bbox = canvas.bbox(bullet.id)
-    if bbox is None:
-        return
-
-    bx1, by1, bx2, by2 = bbox
-
-    for enemy in enemies[:]:
-        enemy_bbox = canvas.bbox(enemy.id)
-        if enemy_bbox is None:
-            if enemy in enemies:
-                enemies.remove(enemy)
-                continue
-
-        try: ex1, ey1, ex2, ey2 = enemy_bbox
-        except: continue
-        
-
-        if bx1 < ex2 and bx2 > ex1 and by1 < ey2 and by2 > ey1:
-            if piercing == False:
-                canvas.delete(bullet.id)
-                if bullet in bullets:
-                    bullets.remove(bullet)
-            
-            old_enemy_count = len(enemies)
-            
-            enemy.take_damage(enemies, player, damage_player)
-
-            if len(enemies) < old_enemy_count:
-                score += 1
-                canvas.itemconfig(score_text, text = f"Score: {score}")
 
             
 def check_collision_player_enemy(enemy):
@@ -388,10 +325,12 @@ def game_loop():
         move_powerups()
 
         for bullet in bullets[:]:
-            bullet.move()
-            check_delete(bullet)
+            x = root.winfo_pointerx()
+            y = root.winfo_pointery()
+            bullet.move(player, x, y)
+            bullet.check_delete(SCREEN_WIDTH, SCREEN_HEIGHT, bullets)
             if bullet in bullets:
-                check_hit(bullet)
+                bullet.check_hit(enemies, score, piercing, bullets, player, damage_player, score_text)
             
         for enemy in enemies[:]:
             enemy.move_towards_player(px1, py1)
