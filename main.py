@@ -4,6 +4,7 @@ import math
 import time
 from bullet import Bullet
 from enemy import Enemy, NormalEnemy, SplitterEnemy, TankEnemy, SpeedyEnemy, KamikazeEnemy
+from powerup import Powerup, SpreadShot, HealthPowerup, BiggerBullets, PiercingBullets
 
 PLAYER_LENGTH = 25
 PLAYER_SPEED = 5
@@ -55,21 +56,21 @@ def revive(event = None):
     game_loop()
     make_enemy()
 
-def random_spawn_position():
+def random_spawn_position(length):
     side = random.randint(1, 4)
     if side == 1:
-        return -ENEMY_LENGTH, random.randint(0, SCREEN_HEIGHT)
+        return -length, random.randint(0, SCREEN_HEIGHT)
     elif side == 2:
         return random.randint(0, SCREEN_WIDTH), SCREEN_HEIGHT
     elif side == 3:
         return SCREEN_WIDTH, random.randint(0, SCREEN_HEIGHT)
     else:
-        return random.randint(0, SCREEN_WIDTH), -ENEMY_LENGTH
+        return random.randint(0, SCREEN_WIDTH), - length
 
 def make_enemy():
     global enemy_refresh_rate
     enemy_class = random.choice([NormalEnemy, TankEnemy, SpeedyEnemy, SplitterEnemy, KamikazeEnemy])
-    x,y = random_spawn_position()
+    x,y = random_spawn_position(ENEMY_LENGTH)
     enemy = enemy_class(canvas, x, y, ENEMY_LENGTH)
     enemies.append(enemy)
     enemy_refresh_rate -= 10
@@ -78,6 +79,19 @@ def make_enemy():
     else:
         root.after(1, make_enemy)
 
+def make_powerup():
+    global powerup_refresh_rate
+
+    if not god:
+        powerup_class = random.choice([SpreadShot, HealthPowerup, BiggerBullets, PiercingBullets])
+        x, y = random_spawn_position(POWERUP_RADIUS)
+        powerup = powerup_class(canvas, x, y, POWERUP_RADIUS, POWERUP_SPEED)
+        powerups.append(powerup)
+        powerup_refresh_rate -= 10
+
+        powerup_refresh_rate -= 10
+        root.after(max(powerup_refresh_rate, 100), make_powerup)
+
 def move_enemies():
     px1, py1, px2, py2 = canvas.coords(player)
 
@@ -85,11 +99,19 @@ def move_enemies():
     player_center_y = (py2 + py1) / 2
 
     for enemy in enemies[:]:
-        if not canvas.coords[enemy.id]:
+        if not canvas.coords(enemy.id):
             if enemy in enemies:
                 enemies.remove(enemy)
                 continue
             enemy.move_towards_player(player_center_x, player_center_y)
+
+def move_powerups():
+    for powerup in powerups:
+        if not canvas.coords(powerup.id):
+            if powerup in powerups:
+                powerups.remove(powerups)
+                continue
+        powerup.move()
 
 def damage_player(amount):
     global health
@@ -152,64 +174,6 @@ def check_collision_player_enemy(enemy):
 
         canvas.coords(enemy.id, new_ex1, new_ey1, new_ex1 + ENEMY_LENGTH, new_ey1 + ENEMY_LENGTH)
 
-def spawn_powerup(color, type):
-    spawn_side = random.randint(1, 4)
-    start_x = random.randint(0, SCREEN_WIDTH)
-    start_y = random.randint(0, SCREEN_HEIGHT)
-    target_x = random.randint(0, SCREEN_WIDTH)
-    target_y = random.randint(0, SCREEN_HEIGHT)
-    if spawn_side == 1:
-        id = canvas.create_oval(- POWERUP_RADIUS, start_y , 0, start_y + POWERUP_RADIUS, fill = color)
-    elif spawn_side == 2:
-        id = canvas.create_oval(start_x, SCREEN_HEIGHT , start_x + POWERUP_RADIUS, SCREEN_HEIGHT + POWERUP_RADIUS, fill = color)
-    elif spawn_side == 3:
-        id = canvas.create_oval(SCREEN_WIDTH, start_y, SCREEN_WIDTH + POWERUP_RADIUS, start_y + POWERUP_RADIUS, fill = color)
-    elif spawn_side == 4:
-        id = canvas.create_oval(start_x, 0 , start_x + POWERUP_RADIUS, 0 - POWERUP_RADIUS, fill = color)
-    return { "id": id, "target_x": target_x, "target_y": target_y, "type": type}
-
-def make_powerup():
-    global powerup_refresh_rate
-    if not god:
-        powerup_type = random.choice(["spread_shot", "health", "bigger_bullets", "piercing_bullets"])
-        if powerup_type == "spread_shot":
-            powerup = spawn_powerup("#F97316", powerup_type)
-            powerups.append(powerup)
-        elif powerup_type == "health":
-            powerup = spawn_powerup("#32CD32", powerup_type)
-            powerups.append(powerup)
-        elif powerup_type == "bigger_bullets":
-            powerup = spawn_powerup("#DC2626", powerup_type)
-            powerups.append(powerup)
-        elif powerup_type == "piercing_bullets":
-            powerup = spawn_powerup("#7E22CE", powerup_type)
-            powerups.append(powerup)
-
-        powerup_refresh_rate -= 10
-        root.after(max(powerup_refresh_rate, 100), make_powerup)
-
-def move_powerups():
-    for powerup in powerups:
-        try: x1, y1, x2, y2 = canvas.coords(powerup["id"])
-        except: powerups.remove(powerup)
-
-        center_x = (x2 + x1) / 2
-        center_y = (y2 + y1) / 2
-
-        dx = powerup["target_x"] - center_x
-        dy = powerup["target_y"] - center_y
-
-        distance = math.sqrt(dx**2 + dy**2)
-
-        if distance < 2:
-            powerup["target_x"] = random.randint(0, SCREEN_WIDTH)
-            powerup["target_y"] = random.randint(0, SCREEN_HEIGHT)
-
-        move_x = (dx / distance) * POWERUP_SPEED
-        move_y = (dy / distance) * POWERUP_SPEED
-
-        canvas.move(powerup["id"], move_x, move_y)
-
 def check_colision_player_powerup(powerup):
     global spread_shot, active_powerups, health, bullet_radius, bigger_bullets, piercing
     plx1, ply1, plx2, ply2 = canvas.coords(player)
@@ -217,22 +181,16 @@ def check_colision_player_powerup(powerup):
 
     if plx1 < pox2 and plx2 > pox1 and ply1 < poy2 and ply2 > poy1:
         if powerup["type"] == "spread_shot":
-            spread_shot = True
-            active_powerups["spread_shot"] = time.time() + 5
+            SpreadShot.activate(spread_shot, active_powerups)
         elif powerup["type"] == "health":
-            if health + 50 > 500:
-                health = 500
-            else:
-                health += 50
+            HealthPowerup.activate(health)
             x1, y1, x2, y2 = canvas.coords(health_bar)
             new_x2 = x1 + (health / MAX_HEALTH) * health_bar_width
             canvas.coords(health_bar, x1, y1, new_x2, y2)
         elif powerup["type"] == "bigger_bullets":
-            bigger_bullets = True
-            active_powerups["bigger_bullets"] = time.time() + 5
+            BiggerBullets.activate(spread_shot, active_powerups)
         elif powerup["type"] == "piercing_bullets":
-            piercing = True
-            active_powerups["piercing_bullets"] = time.time() + 5
+            PiercingBullets.activate(piercing, active_powerups)
 
         canvas.delete(powerup["id"])
         if powerup in powerups:
@@ -336,8 +294,8 @@ def game_loop():
             enemy.move_towards_player(px1, py1)
             check_collision_player_enemy(enemy)
 
-        for powerup in powerups[:]:
-            check_colision_player_powerup(powerup)
+        # for powerup in powerups[:]:
+        #     check_colision_player_powerup(powerup)
         
         if spread_shot and time.time() > active_powerups["spread_shot"] and not god:
             spread_shot = False
