@@ -23,7 +23,7 @@ class Bullet:
          self.canvas.delete(self.id)
          bullets.remove(self)
    
-   def check_hit(self, enemies, score, piercing, bullets, player, damage_player, score_text):
+   def check_hit(self, enemies, piercing, bullets, player, damage_player):
       bbox = self.canvas.bbox(self.id)
       if bbox is None:
         return
@@ -51,8 +51,5 @@ class Bullet:
             
             enemy.take_damage(enemies, player, damage_player)
 
-            if len(enemies) < old_enemy_count:
-                score += 1
-                self.canvas.itemconfig(score_text, text = f"Score: {score}")
       
 

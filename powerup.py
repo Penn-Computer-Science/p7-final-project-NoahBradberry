@@ -80,5 +80,7 @@ class PiercingBullets(Powerup):
 
     def activate(piercing, active_powerups):
         piercing = True
-        active_powerups["piercing_bullets"] = time.time() + 5       
+        active_powerups["piercing_bullets"] = time.time() + 5 
+
+        return(piercing, active_powerups)      
 

@@ -73,7 +73,7 @@ class SpeedyEnemy(Enemy):
 class SplitterEnemy(Enemy):
     def __init__(self, canvas, x, y, length):
 
-        super().__init__(canvas, x, y, length, "green", 2, 3, "splitter")
+        super().__init__(canvas, x, y, length, "green", 1, 3, "splitter")
 
     def die(self, enemies, player = None, damage_player = None):
         x1, y1, x2, y2 = self.canvas.coords(self.id)
