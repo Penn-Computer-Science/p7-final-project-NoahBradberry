@@ -30,7 +30,7 @@ display_names = {"spread_shot": "Spread Shot", "bigger_bullets": "Bigger Bullets
 
 
 def reset(event = None):
-    global player, enemies, bullets, health, alive, health_bar, health_bar_width, enemy_refresh_rate, powerup_refresh_rate, powerups, spread_shot, active_powerups, powerups_text, bullet_radius, bigger_bullets, piercing, god, enemies_to_spawn, wave, wave_text
+    global player, enemies, bullets, health, alive, health_bar, health_bar_width, enemy_refresh_rate, powerups, spread_shot, active_powerups, powerups_text, bullet_radius, bigger_bullets, piercing, god, enemies_to_spawn, wave, wave_text
     enemies = []
     bullets = []
     alive = True
@@ -42,7 +42,6 @@ def reset(event = None):
     health_bar = canvas.create_rectangle(50, SCREEN_HEIGHT - 50, SCREEN_WIDTH - 50, SCREEN_HEIGHT - 20, fill = "green")
     health_bar_width = canvas.coords(health_bar)[2] - canvas.coords(health_bar)[0]
     enemy_refresh_rate = 1000
-    powerup_refresh_rate = 5000
     powerups = []
     spread_shot = False
     bigger_bullets = False
@@ -74,6 +73,9 @@ def random_spawn_position(length):
     
 def make_wave_list(wave):
     global enemies_to_spawn
+
+    enemies_to_spawn = []
+
     for i in range (wave["normal"]):
         enemies_to_spawn.append(NormalEnemy)
     
@@ -90,9 +92,17 @@ def make_wave_list(wave):
         enemies_to_spawn.append(KamikazeEnemy)
     
     return enemies_to_spawn
+
+def new_wave():
+    global wave
+    wave += 1
+    new_wave_text = canvas.create_text(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, text = f"Wave: {wave}", font = ("Arial", 50 , "bold"), fill = "white")
+    root.after(1000, lambda: canvas.delete(new_wave_text))
+    canvas.itemconfig(wave_text, text = f"Wave: {wave}" )
+    enemies_to_spawn = make_wave_list(waves[wave])
+    root.after(1000, lambda: spawn_wave(enemies_to_spawn))
     
 def spawn_wave(enemies_to_spawn):
-    global enemy_refresh_rate, wave
     if len(enemies_to_spawn) != 0:
         enemy_class = random.choice(enemies_to_spawn)
         x, y = random_spawn_position(ENEMY_LENGTH)
@@ -100,24 +110,21 @@ def spawn_wave(enemies_to_spawn):
         enemies.append(enemy)
         enemies_to_spawn.remove(enemy_class)
         root.after(1000, lambda: spawn_wave(enemies_to_spawn))
+        print(enemies_to_spawn)
+        print(enemies)
+    elif len(enemies_to_spawn) == 0 and len(enemies) == 0:
+        root.after(1000, new_wave)
     else:
-        wave += 1
-        enemies_to_spawn = make_wave_list(waves[wave])
         root.after(1000, lambda: spawn_wave(enemies_to_spawn))
 
 
 def make_powerup():
-    global powerup_refresh_rate
-
     if not god:
         powerup_class = random.choice([SpreadShot, HealthPowerup, BiggerBullets, PiercingBullets])
         x, y = random_spawn_position(POWERUP_RADIUS)
         powerup = powerup_class(canvas, x, y, POWERUP_RADIUS, POWERUP_SPEED)
         powerups.append(powerup)
-        powerup_refresh_rate -= 10
-
-        powerup_refresh_rate -= 10
-        root.after(max(powerup_refresh_rate, 100), make_powerup)
+        root.after(15000, make_powerup)
 
 def move_enemies():
     px1, py1, px2, py2 = canvas.coords(player)
@@ -136,7 +143,7 @@ def move_powerups():
     for powerup in powerups:
         if not canvas.coords(powerup.id):
             if powerup in powerups:
-                powerups.remove(powerups)
+                powerups.remove(powerup)
                 continue
         powerup.move()
         check_colision_player_powerup(powerup)
@@ -233,7 +240,7 @@ def game_over():
 
 
 def god_mode(event):
-    global health, bigger_bullets, piercing, spread_shot, powerup_refresh_rate, god, MAX_HEALTH
+    global health, bigger_bullets, piercing, spread_shot, god, MAX_HEALTH
     god = True
     MAX_HEALTH = 2147483647
     health = 2147483647
@@ -276,6 +283,7 @@ def game_loop():
     global spread_shot, bigger_bullets, piercing
     dx = 0
     dy = 0
+    canvas.tag_raise(player)
 
     if alive:
 
@@ -319,6 +327,9 @@ def game_loop():
                 bullet.check_hit(enemies, piercing, bullets, player, damage_player)
             
         for enemy in enemies[:]:
+            if not canvas.coords(enemy.id):
+                enemies.remove(enemy)
+                continue
             enemy.move_towards_player(px1, py1)
             check_collision_player_enemy(enemy)
         
