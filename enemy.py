@@ -56,9 +56,9 @@ class TankEnemy(Enemy):
         self.health -= 1
         
         if self.health == 2:
-            self.canvas.itemconfig(self.id, fill = "#DC2626")
+            self.canvas.itemconfig(self.id, fill = "#AE2222")
         elif self.health == 1:
-            self.canvas.itemconfig(self.id, fill = "#F87171")
+            self.canvas.itemconfig(self.id, fill = "#DC2626")
         elif self.health == 0:
             self.canvas.delete(self.id)
             if self in enemies:

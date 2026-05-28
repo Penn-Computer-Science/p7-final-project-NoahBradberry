@@ -30,7 +30,7 @@ display_names = {"spread_shot": "Spread Shot", "bigger_bullets": "Bigger Bullets
 
 
 def reset(event = None):
-    global player, enemies, bullets, health, alive, health_bar, health_bar_width, enemy_refresh_rate, powerups, spread_shot, active_powerups, powerups_text, bullet_radius, bigger_bullets, piercing, god, enemies_to_spawn, wave, wave_text
+    global player, enemies, bullets, health, alive, health_bar, health_bar_width, enemy_refresh_rate, powerups, spread_shot, active_powerups, powerups_text, bullet_radius, bigger_bullets, piercing, enemies_to_spawn, wave, wave_text
     enemies = []
     bullets = []
     alive = True
@@ -49,7 +49,6 @@ def reset(event = None):
     powerups_text = canvas.create_text(10, 40, text = "", fill = "white", font = ("Arial", 20), anchor = "w")
     bullet_radius = 5
     piercing = False
-    god = False
     enemies_to_spawn = []
     wave = 1
     wave_text = canvas.create_text( SCREEN_WIDTH - 150, 40, text = f"Wave: {wave}", font = ("Arial", 20), anchor = "w",fill = "white")
@@ -110,21 +109,18 @@ def spawn_wave(enemies_to_spawn):
         enemies.append(enemy)
         enemies_to_spawn.remove(enemy_class)
         root.after(1000, lambda: spawn_wave(enemies_to_spawn))
-        print(enemies_to_spawn)
-        print(enemies)
+
     elif len(enemies_to_spawn) == 0 and len(enemies) == 0:
         root.after(1000, new_wave)
     else:
         root.after(1000, lambda: spawn_wave(enemies_to_spawn))
 
-
 def make_powerup():
-    if not god:
-        powerup_class = random.choice([SpreadShot, HealthPowerup, BiggerBullets, PiercingBullets])
-        x, y = random_spawn_position(POWERUP_RADIUS)
-        powerup = powerup_class(canvas, x, y, POWERUP_RADIUS, POWERUP_SPEED)
-        powerups.append(powerup)
-        root.after(15000, make_powerup)
+    powerup_class = random.choice([SpreadShot, HealthPowerup, BiggerBullets, PiercingBullets])
+    x, y = random_spawn_position(POWERUP_RADIUS)
+    powerup = powerup_class(canvas, x, y, POWERUP_RADIUS, POWERUP_SPEED)
+    powerups.append(powerup)
+    root.after(15000, make_powerup)
 
 def move_enemies():
     px1, py1, px2, py2 = canvas.coords(player)
@@ -180,9 +176,7 @@ def shoot(event):
         mouse_x -= 60
         mouse_y -= 60
         bullets.append(Bullet(canvas, player_center_x - bullet_radius, player_center_y - bullet_radius, player_center_x + bullet_radius, player_center_y + bullet_radius, player_center_x, player_center_y, mouse_x, mouse_y))
-
-
-            
+          
 def check_collision_player_enemy(enemy):
     global health_bar, health
     px1, py1, px2, py2 = canvas.coords(player)
@@ -231,26 +225,37 @@ def check_colision_player_powerup(powerup):
         if powerup in powerups:
             powerups.remove(powerup)
 
+def dash(event):
+    x1, y1, x2, y2 = canvas.coords(player)
+
+    if keys["Left"] or keys["a"]:
+        if x1 - 100 > 0:
+            canvas.move(player, -100, 0)
+        else:
+            canvas.coords(player, 0, y1, PLAYER_LENGTH, y2)
+    if keys["Right"] or keys["d"]:
+        if x2 + 100 < SCREEN_WIDTH:
+            canvas.move(player, 100, 0)
+        else:
+            canvas.coords(player, SCREEN_WIDTH - PLAYER_LENGTH, y1, SCREEN_WIDTH, y2)
+    if keys["Up"] or keys["w"]:
+        if y1 - 100 > 0:
+            canvas.move(player, 0, -100)
+        else:
+            canvas.coords(player, x1, 0, x2, PLAYER_LENGTH)
+    if keys["Down"] or keys["s"]:
+        if y2 + 100 < SCREEN_HEIGHT:
+            canvas.move(player, 0, 100)
+        else:
+            canvas.coords(player, x1, SCREEN_HEIGHT - PLAYER_LENGTH, x2, SCREEN_HEIGHT)
+    
+
 def game_over():
     global alive
     alive = False
     canvas.delete("all")
 
     game_over_text = canvas.create_text(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, text= "Game Over. Press r to Restart", fill = "white", font=("Arial", 12))
-
-
-def god_mode(event):
-    global health, bigger_bullets, piercing, spread_shot, god, MAX_HEALTH
-    god = True
-    MAX_HEALTH = 2147483647
-    health = 2147483647
-    for powerup in powerups:
-        canvas.delete(powerup["id"])
-        powerups.remove(powerup)
-    bigger_bullets = True
-    piercing = True
-    spread_shot = True
-    god_text = canvas.create_text(80, 40, text = "God Mode", font = ("Arial", 24), fill = "white")
 
 keys = {
         "Left": False,
@@ -277,7 +282,7 @@ root.bind("<KeyRelease>", key_release)
 root.bind("r", reset)
 root.bind("<Button-1>", shoot)
 root.bind("<Escape>", lambda e: root.destroy())
-root.bind("g", god_mode)
+root.bind("<space>", dash)
 
 def game_loop():
     global spread_shot, bigger_bullets, piercing
@@ -333,13 +338,13 @@ def game_loop():
             enemy.move_towards_player(px1, py1)
             check_collision_player_enemy(enemy)
         
-        if spread_shot and time.time() > active_powerups["spread_shot"] and not god:
+        if spread_shot and time.time() > active_powerups["spread_shot"]:
             spread_shot = False
         
-        if bigger_bullets and time.time() > active_powerups["bigger_bullets"] and not god:
+        if bigger_bullets and time.time() > active_powerups["bigger_bullets"]:
             bigger_bullets = False
 
-        if piercing and time.time() > active_powerups["piercing_bullets"] and not god:
+        if piercing and time.time() > active_powerups["piercing_bullets"]:
             piercing = False
         
         powerup_lines = []
